@@ -14,7 +14,9 @@ import AVFoundation
 
 class ViewController: UIViewController {
     
+    @IBOutlet weak var faceLabel: UILabel!
     @IBOutlet weak var globalView: UIView!
+    @IBOutlet weak var loader: UIActivityIndicatorView!
     
     lazy var db = Firestore.firestore()
     let systemSoundID: SystemSoundID = 1016
@@ -50,24 +52,15 @@ class ViewController: UIViewController {
     var isSmiling = false
     
     var eyeTimer : Timer?
-    var eyesAreClosed = false {
-        didSet {
-//            if eyesAreClosed {
-//                guard (eyeTimer?.isValid ?? false) == false else { return }
-//                eyeTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true, block: { (timer) in
-//                    AudioServicesPlaySystemSound (self.systemSoundID)
-//                    print("WAKE UP !!")
-//                })
-//            }else {
-//                eyeTimer?.invalidate()
-//            }
-        }
-    }
+    var eyesAreClosed = false
     
     var currentEyeLabel = 0
 
     var closedEyesData : [[(CGFloat,CGFloat)]] = []
     var openedEyesData : [[(CGFloat,CGFloat)]] = []
+    
+    var pushedEyes : [[Double]] = []
+    var pushStatus = "closed"
     
     let closedEyes : [(CGFloat,CGFloat)] = [(0.1915283203125, 0.8336181640625), (0.258056640625, 0.8658447265625), (0.3515625, 0.863037109375), (0.42578125, 0.83740234375), (0.6025390625, 0.8310546875), (0.677734375, 0.859619140625), (0.7626953125, 0.858642578125), (0.82177734375, 0.8262939453125), (0.2440185546875, 0.72412109375), (0.280029296875, 0.7255859375), (0.314697265625, 0.725830078125), (0.355712890625, 0.73046875), (0.397216796875, 0.728515625), (0.366455078125, 0.7109375), (0.318115234375, 0.70751953125), (0.2822265625, 0.71142578125), (0.62353515625, 0.72314453125), (0.6630859375, 0.723388671875), (0.69677734375, 0.718505859375), (0.73193359375, 0.7158203125), (0.76806640625, 0.710205078125), (0.73583984375, 0.701416015625), (0.6943359375, 0.69921875), (0.654296875, 0.70556640625), (0.436767578125, 0.3427734375), (0.490234375, 0.3505859375), (0.529296875, 0.34326171875), (0.57470703125, 0.35546875), (0.6162109375, 0.34033203125), (0.662109375, 0.31689453125), (0.60546875, 0.26123046875), (0.5302734375, 0.248046875), (0.4482421875, 0.263671875), (0.372802734375, 0.318359375), (0.457763671875, 0.314453125), (0.52783203125, 0.30908203125), (0.5888671875, 0.310546875), (0.5908203125, 0.3056640625), (0.52685546875, 0.30126953125), (0.447998046875, 0.31494140625), (0.10552978515625, 0.73193359375), (0.11309814453125, 0.58447265625), (0.1490478515625, 0.33447265625), (0.239013671875, 0.16845703125), (0.373046875, 0.04736328125), (0.525390625, 0.01416015625), (0.654296875, 0.046875), (0.76416015625, 0.16552734375), (0.83544921875, 0.32470703125), (0.8798828125, 0.562744140625), (0.88037109375, 0.72900390625), (0.47216796875, 0.736083984375), (0.45654296875, 0.566162109375), (0.411865234375, 0.47802734375), (0.477294921875, 0.47509765625), (0.5400390625, 0.439453125), (0.59619140625, 0.47021484375), (0.6416015625, 0.4775390625), (0.60693359375, 0.566162109375), (0.5673828125, 0.73876953125), (0.52587890625, 0.7547607421875), (0.53173828125, 0.655517578125), (0.54833984375, 0.522705078125), (0.3198089599609375, 0.720550537109375), (0.69598388671875, 0.712158203125)]
     
@@ -80,17 +73,17 @@ class ViewController: UIViewController {
     let closedEyeHeight = [1.432961971760663, 1.8626825742394997, 2.2290453536158843, 1.9871607172973274, 1.9441014698846146, 1.4924562222244067]
     
     var eyesHeightsValues : [[Double]] = []
-    var eyesHeightsLabels : [String] = []
     var eyesHeightsIntLabels : [Int] = [] //0 closed - 1 opened
     
     var kppv : KNearestNeighborsClassifier?
     
+    var showEyesPoint = false
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         sessionPrepare()
-        drawPoints(points: normalFaceExemple)
+        //drawPoints(points: normalFaceExemple)
         print(getEyeHeights(facePoints: normalFaceExemple))
-        session?.startRunning()
         
         getEyesHeights()
 //        getSmilesMouths()
@@ -138,6 +131,7 @@ class ViewController: UIViewController {
     }
     
     func getEyesHeights(){
+        loader.startAnimating()
         db.collection("eyesHeights").getDocuments { (snap, err) in
             for doc in snap?.documents ?? []{
                 guard let values = doc.data()["values"] as? [Double],
@@ -145,14 +139,15 @@ class ViewController: UIViewController {
                     ,label == "opened" || label == "closed"
                     else { continue }
                 self.eyesHeightsValues.append(values)
-                self.eyesHeightsLabels.append(label)
                 let intLabel = self.getIntLabel(label)
                 self.eyesHeightsIntLabels.append(intLabel)
             }
             
             self.kppv = KNearestNeighborsClassifier(data: self.eyesHeightsValues, labels: self.eyesHeightsIntLabels)
+            self.session?.startRunning()
+            self.loader.stopAnimating()
             print("getEyesHeights ok")
-            self.testEyeHeightClassifieur()
+            //self.testEyeHeightClassifieur()
         }
     }
     
@@ -230,6 +225,15 @@ class ViewController: UIViewController {
         
         let yPred = kppv?.predict(xTests) ?? []
         print(accuracy(yTests: yTests, yPred: yPred))
+    }
+    
+    func getYPred( size : Int = 50) -> [Int]{
+        let status = pushStatus == "opened" ? 1 : 0
+        var yPred : [Int] = []
+        for _ in 0..<size{
+            yPred.append(status)
+        }
+        return yPred
     }
     
     func accuracy(yTests : [Int], yPred : [Int]) -> Double{
@@ -400,12 +404,22 @@ class ViewController: UIViewController {
         }
     }
     
+    func pushIn3Sec(){
+        globalView.isHidden = false
+        showEyesPoint = true
+        Timer.scheduledTimer(withTimeInterval: 3, repeats: false) { (timer) in
+            self.canPush = true
+        }
+    }
+    
     @IBAction func onSmile(_ sender: Any) {
-        smiles.append(currentFace)
+        pushStatus = "opened"
+        pushIn3Sec()
     }
     
     @IBAction func onNormal(_ sender: Any) {
-        normals.append(currentFace)
+        pushStatus = "closed"
+        pushIn3Sec()
     }
     
 }
@@ -432,13 +446,15 @@ extension ViewController {
         try? faceDetectionRequest.perform([faceDetection], on: image)
         if let results = faceDetection.results as? [VNFaceObservation] {
             
-            if results.count == 0{
+            if results.count == 0{  //No face
                 DispatchQueue.main.async {
                     self.shapeLayer.sublayers?.removeAll()
+                    self.checkEyeStatus(1)
+                    self.currentEyeLabel = 1
+                    self.faceLabel.text = ""
                 }
             }
             if !results.isEmpty {
-                
                 
                 faceLandmarks.inputFaceObservations = results
                 detectLandmarks(on: image)
@@ -463,41 +479,40 @@ extension ViewController {
                         let faceBoundingBox = boundingBox.scaled(to: self.view.bounds.size)
                         //different types of landmarks
                         
-                        if self.timer == nil && !self.canPush {
-                            print("GO !!!")
-                            self.timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { (timer) in
-                                print("PUSHING !!!")
-                                self.canPush = true
-                            })
-                        }
-                        
                         let allpoints = observation.landmarks?.allPoints
                         self.convertPointsForFace(allpoints, faceBoundingBox)
                         
                         if let points = allpoints?.normalizedPoints{
                             self.currentFace = points.map({ ($0.x, $0.y) })
-                            //print(self.currentFace)
-                            
-                            //let mouth = Array(self.currentFace[24...39])
-                            //self.kppvSmile(new: mouth)
-                            
-//                            var eyes = Array(self.currentFace[8...23])
-//                            eyes.append(contentsOf: self.currentFace[63...64])
-                            //self.kppvEyes(new: eyes)
-                            
-                            
-                            //self.pushData(points)
                             
                             let eyeHeights = self.getEyeHeights(facePoints: self.currentFace)
                             let pred = self.kppv?.predict([eyeHeights]) ?? []
                             //print(self.kppv?.predict([eyeHeights]) ?? [])
-                            //self.pushEyesHeights(eyeHeights)
+                            
+                            self.pushEyesHeights(eyeHeights)
                             self.checkEyeStatus(pred.first ?? 0)
                             self.currentEyeLabel = pred.first ?? 0
+                            self.setFaceLabel(status: self.currentEyeLabel)
                         }
                     }
                 }
             }
+        }
+    }
+    
+    func setFaceLabel(status : Int){
+        switch status {
+        case 0 :
+            faceLabel.text = "-.-"
+        case 1 :
+            faceLabel.text = "O.O"
+        case 2 :
+            faceLabel.text = "O.-"
+        case 3 :
+            faceLabel.text = "-.O"
+            
+        default:
+            break
         }
     }
     
@@ -506,7 +521,10 @@ extension ViewController {
             guard (eyeTimer?.isValid ?? false) == false else { return }
             eyeTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true, block: { (timer) in
                 print("\(status) confirmed")
-                if status == 0 { AudioServicesPlaySystemSound (self.systemSoundID) } //WAKE UP
+                if status == 0 && self.canPush == false {
+                    AudioServicesPlaySystemSound (self.systemSoundID)
+                    AudioServicesPlayAlertSound(SystemSoundID(kSystemSoundID_Vibrate))
+                } //WAKE UP
             })
         }else {
             eyeTimer?.invalidate()
@@ -516,13 +534,30 @@ extension ViewController {
     func pushEyesHeights(_ points : [Double]){
         guard canPush else { return }
         if countPushes >= 50 {
-            print("FINISHED")
-            session?.stopRunning()
+            let pred = kppv?.predict(pushedEyes) ?? []
+            let acc = accuracy(yTests: pred, yPred: getYPred()) * 100
+            let action = UIAlertAction(title: "Send", style: .default) { (action) in
+                for eye in self.pushedEyes{
+                    self.db.collection("eyesHeights").addDocument(data: ["values": eye, "key" : self.pushStatus])
+                }
+                self.eyesHeightsValues.append(contentsOf: self.pushedEyes)
+                let intLabels = self.getYPred()
+                self.eyesHeightsIntLabels.append(contentsOf: intLabels)
+                self.pushedEyes.removeAll()
+            }
+            let cancel = UIAlertAction(title: "Cancel", style: .cancel) { (action) in
+                self.pushedEyes.removeAll()
+            }
+            self.showAlert(title: "Finished !", message: "Send \(pushStatus) eyes ? (\(acc)%)", actions: [action, cancel])
+            self.showEyesPoint = false
+            self.canPush = false
+            self.countPushes = 0
+            self.globalView.isHidden = true
             return
         }
         
-        self.db.collection("eyesHeights").addDocument(data: ["values": points,
-                                                             "key" : "rightClosed"])
+        self.pushedEyes.append(points)
+        //self.db.collection("eyesHeights").addDocument(data: ["values": points, "key" : "rightClosed"])
         countPushes += 1
     }
     
@@ -545,6 +580,10 @@ extension ViewController {
     //mouth = [24...39]
     //eyes [8...23] + [63...64]
     func drawPoints(points :[(CGFloat, CGFloat)]){
+        guard points.count == 65 else { return }
+        self.globalView.subviews.forEach({
+            if $0.tag == 1 { $0.removeFromSuperview() }
+        })
         var limitPoints = points[8...23]
         limitPoints.append(contentsOf: points[63...64])
         for point in points{
@@ -553,6 +592,7 @@ extension ViewController {
             let pointView = UIView(frame: CGRect(x: x, y: y, width: 3, height: 3))
             pointView.layer.cornerRadius = pointView.frame.width / 2
             pointView.backgroundColor = UIColor.red
+            pointView.tag = 1
             if limitPoints.contains(where: { (compare) -> Bool in
                 return compare == point
             }){
@@ -563,6 +603,7 @@ extension ViewController {
     }
     
     func convertPointsForFace(_ landmark: VNFaceLandmarkRegion2D?, _ boundingBox: CGRect) {
+        guard showEyesPoint else { return }
         if let points = landmark?.normalizedPoints{
             
             let faceLandmarkVertices = points.map { (point: (CGPoint)) -> Vertex in
@@ -595,7 +636,7 @@ extension ViewController {
         for triangle in triangles {
             let triangleLayer = CAShapeLayer()
             triangleLayer.path = triangle.toPath()
-            triangleLayer.strokeColor = eyesAreClosed ? UIColor.green.cgColor : UIColor.red.cgColor
+            triangleLayer.strokeColor = canPush ? UIColor.green.cgColor : UIColor.red.cgColor
             triangleLayer.lineWidth = 1.0
             triangleLayer.fillColor = UIColor.clear.cgColor
             triangleLayer.backgroundColor = UIColor.clear.cgColor
