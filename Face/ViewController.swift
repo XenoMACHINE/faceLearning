@@ -10,12 +10,14 @@ import UIKit
 import AVFoundation
 import Vision
 import FirebaseFirestore
+import AVFoundation
 
 class ViewController: UIViewController {
     
     @IBOutlet weak var globalView: UIView!
     
     lazy var db = Firestore.firestore()
+    let systemSoundID: SystemSoundID = 1016
 
     var frontCamera: AVCaptureDevice? = {
         return AVCaptureDevice.default(AVCaptureDevice.DeviceType.builtInWideAngleCamera, for: AVMediaType.video, position: .front)
@@ -46,7 +48,23 @@ class ViewController: UIViewController {
     
     var currentFace : [(CGFloat, CGFloat)] = []
     var isSmiling = false
-    var eyesAreClosed = false
+    
+    var eyeTimer : Timer?
+    var eyesAreClosed = false {
+        didSet {
+//            if eyesAreClosed {
+//                guard (eyeTimer?.isValid ?? false) == false else { return }
+//                eyeTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true, block: { (timer) in
+//                    AudioServicesPlaySystemSound (self.systemSoundID)
+//                    print("WAKE UP !!")
+//                })
+//            }else {
+//                eyeTimer?.invalidate()
+//            }
+        }
+    }
+    
+    var currentEyeLabel = 0
 
     var closedEyesData : [[(CGFloat,CGFloat)]] = []
     var openedEyesData : [[(CGFloat,CGFloat)]] = []
@@ -58,27 +76,38 @@ class ViewController: UIViewController {
     let smileExemple : [(CGFloat,CGFloat)] = [(0.181396484375, 0.8275146484375), (0.2474365234375, 0.8743896484375), (0.35009765625, 0.87615966796875), (0.41455078125, 0.8497314453125), (0.615234375, 0.8438720703125), (0.6767578125, 0.87109375), (0.77685546875, 0.8665771484375), (0.8388671875, 0.8228759765625), (0.235107421875, 0.70654296875), (0.2685546875, 0.72021484375), (0.313232421875, 0.726806640625), (0.354736328125, 0.721923828125), (0.393310546875, 0.708251953125), (0.359619140625, 0.69482421875), (0.3125, 0.693115234375), (0.270263671875, 0.693359375), (0.62890625, 0.70458984375), (0.66943359375, 0.71728515625), (0.70703125, 0.722412109375), (0.74853515625, 0.714111328125), (0.78564453125, 0.697509765625), (0.75146484375, 0.689453125), (0.705078125, 0.6865234375), (0.6650390625, 0.692138671875), (0.42041015625, 0.3642578125), (0.47998046875, 0.3701171875), (0.52783203125, 0.361328125), (0.57275390625, 0.37109375), (0.62548828125, 0.359375), (0.70458984375, 0.32373046875), (0.6103515625, 0.21728515625), (0.5185546875, 0.197265625), (0.42431640625, 0.216796875), (0.33203125, 0.330078125), (0.42626953125, 0.33154296875), (0.5244140625, 0.32177734375), (0.62060546875, 0.328125), (0.62744140625, 0.27099609375), (0.51953125, 0.2529296875), (0.40625, 0.2763671875), (0.111572265625, 0.702880859375), (0.10052490234375, 0.56884765625), (0.1220703125, 0.322265625), (0.212890625, 0.14013671875), (0.363525390625, 0.00146484375), (0.5166015625, -0.0341796875), (0.654296875, 0.0029296875), (0.80029296875, 0.14111328125), (0.88818359375, 0.32080078125), (0.9140625, 0.564453125), (0.89306640625, 0.7080078125), (0.470703125, 0.73046875), (0.447998046875, 0.574462890625), (0.3916015625, 0.48876953125), (0.461669921875, 0.48388671875), (0.52685546875, 0.44873046875), (0.595703125, 0.4833984375), (0.65478515625, 0.48681640625), (0.60107421875, 0.574951171875), (0.5595703125, 0.73388671875), (0.51953125, 0.746826171875), (0.52490234375, 0.660888671875), (0.5341796875, 0.53564453125), (0.31341552734375, 0.7081298828125), (0.7076416015625, 0.7030029296875)]
     
     
+    let normalEyeHeight = [4.27692289328667, 5.6396484375, 4.271274946997859, 4.541015625, 6.189097265749245, 4.210010235382105]
+    let closedEyeHeight = [1.432961971760663, 1.8626825742394997, 2.2290453536158843, 1.9871607172973274, 1.9441014698846146, 1.4924562222244067]
+    
+    var eyesHeightsValues : [[Double]] = []
+    var eyesHeightsLabels : [String] = []
+    var eyesHeightsIntLabels : [Int] = [] //0 closed - 1 opened
+    
+    var kppv : KNearestNeighborsClassifier?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         sessionPrepare()
-        drawPoints(points: closedEyes)
+        drawPoints(points: normalFaceExemple)
+        print(getEyeHeights(facePoints: normalFaceExemple))
         session?.startRunning()
         
-        getSmilesMouths()
-        getOpenedEyes()
+        getEyesHeights()
+//        getSmilesMouths()
+//        getOpenedEyes()
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        previewLayer?.frame = view.frame
-        shapeLayer.frame = view.bounds
+        previewLayer?.frame = view.layer.frame
+        shapeLayer.frame = view.layer.frame
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         guard let previewLayer = previewLayer else { return }
         
-        view.layer.addSublayer(previewLayer)
+        globalView.layer.addSublayer(previewLayer)
         
         shapeLayer.strokeColor = UIColor.blue.cgColor
         shapeLayer.lineWidth = 4.0
@@ -86,11 +115,45 @@ class ViewController: UIViewController {
         //needs to filp coordinate system for Vision
         shapeLayer.setAffineTransform(CGAffineTransform(scaleX: -1, y: -1))
         
-        view.layer.addSublayer(shapeLayer)
+        globalView.layer.addSublayer(shapeLayer)
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         session?.stopRunning()
+    }
+    
+    func getIntLabel(_ label: String) -> Int{
+        switch label {
+        case "closed":
+            return 0
+        case "opened":
+            return 1
+        case "leftClosed":
+            return 2
+        case "rightClosed":
+            return 3
+        default:
+            return -1
+        }
+    }
+    
+    func getEyesHeights(){
+        db.collection("eyesHeights").getDocuments { (snap, err) in
+            for doc in snap?.documents ?? []{
+                guard let values = doc.data()["values"] as? [Double],
+                    let label = doc.data()["key"] as? String
+                    ,label == "opened" || label == "closed"
+                    else { continue }
+                self.eyesHeightsValues.append(values)
+                self.eyesHeightsLabels.append(label)
+                let intLabel = self.getIntLabel(label)
+                self.eyesHeightsIntLabels.append(intLabel)
+            }
+            
+            self.kppv = KNearestNeighborsClassifier(data: self.eyesHeightsValues, labels: self.eyesHeightsIntLabels)
+            print("getEyesHeights ok")
+            self.testEyeHeightClassifieur()
+        }
     }
     
     func getSmilesMouths(){
@@ -111,12 +174,12 @@ class ViewController: UIViewController {
             }
             print("getMouths ok")
             //self.kppv(new: self.normalFaceExemple)
-            self.kppvSmile(new: self.smileExemple)
+            //self.kppvSmile(new: self.smileExemple)
         }
     }
     
     func getOpenedEyes(){
-        db.collection("openedEyes").getDocuments { (snap, err) in
+        db.collection("openedEyes2").getDocuments { (snap, err) in
             for doc in snap?.documents ?? []{
                 guard let values = doc.data()["values"] as? [String] else { continue }
                 self.openedEyesData.append(self.formatData(values))
@@ -126,23 +189,99 @@ class ViewController: UIViewController {
     }
     
     func getClosedEyes(){
-        db.collection("closedEyes").getDocuments { (snap, err) in
+        db.collection("closedEyes2").getDocuments { (snap, err) in
             for doc in snap?.documents ?? []{
                 guard let values = doc.data()["values"] as? [String] else { continue }
                 self.closedEyesData.append(self.formatData(values))
             }
             print("eyes ok")
+            //self.testClassifieur()
         }
     }
     
-    func kppvEyes(new : [(CGFloat,CGFloat)], k : Int = 10){
+    func getEyeHeights(facePoints : [(CGFloat, CGFloat)]) -> [Double]{
+        var eyeHeights : [Double] = []
+        let oposatePoints = [(9, 15),(10, 14),(11, 13),(17, 23),(18, 22),(19, 21)]
+        
+        for oposatePoint in oposatePoints {
+            let dist = distance(facePoints[oposatePoint.0], facePoints[oposatePoint.1])
+            eyeHeights.append(Double(dist) * 100)
+        }
+        
+        return eyeHeights
+    }
+    
+    func testEyeHeightClassifieur(){
+        var xTrains : [[Double]] = []
+        var yTrains : [Int] = []
+        var xTests : [[Double]] = []
+        var yTests : [Int] = []
+        
+        for i in 0..<eyesHeightsValues.count{
+            let rand = Int.random(in: 0...100)
+            if rand < 50{
+                xTrains.append(eyesHeightsValues[i])
+                yTrains.append(eyesHeightsIntLabels[i])
+            }else{
+                xTests.append(eyesHeightsValues[i])
+                yTests.append(eyesHeightsIntLabels[i])
+            }
+        }
+        
+        let yPred = kppv?.predict(xTests) ?? []
+        print(accuracy(yTests: yTests, yPred: yPred))
+    }
+    
+    func accuracy(yTests : [Int], yPred : [Int]) -> Double{
+        var count : Double = 0
+        for i in 0..<yTests.count{
+            if yTests[i] == yPred[i] { count += 1 }
+        }
+        
+        return count / Double(yPred.count)
+    }
+    
+    func testClassifieur(){
+        var xTrains : [[(CGFloat,CGFloat)]] = []
+        var yTrains : [String] = []
+        var xTests : [[(CGFloat,CGFloat)]] = []
+        var yTests : [String] = []
+        
+        for closedEye in closedEyesData {
+            let rand = Int.random(in: 0...100)
+            if rand < 80{
+                xTrains.append(closedEye)
+                yTrains.append("closed")
+            }else{
+                xTests.append(closedEye)
+                yTests.append("closed")
+            }
+        }
+        
+        for openedEye in openedEyesData {
+            let rand = Int.random(in: 0...100)
+            if rand < 80{
+                xTrains.append(openedEye)
+                yTrains.append("opened")
+            }else{
+                xTests.append(openedEye)
+                yTests.append("opened")
+            }
+        }
+        
+        
+        
+        print("ok")
+    }
+    
+    func kppvEyes(new : [(CGFloat,CGFloat)], k : Int = 3){
         var distances : [(String, Double)] = []
         
         for closedEye in closedEyesData {
-            distances.append(("closed", getDistance(mouth1: closedEye, mouth2: new)))
+            distances.append(("closed", getDistance(points1: closedEye, points2: new)))
         }
         for openedEye in openedEyesData {
-            distances.append(("opened", getDistance(mouth1: openedEye, mouth2: new)))
+            distances.append(("opened", getDistance(points1: openedEye, points2: new)))
         }
         
         distances.sort { (mouth1, mouth2) -> Bool in
@@ -152,17 +291,17 @@ class ViewController: UIViewController {
         guard k < distances.count else { return }
         //print(distances[0...k])
         eyesAreClosed = areClosed(distances[0...k].map({$0.0}))
-        eyesAreClosed ? print("CLOSED") : print("OPENED")
+        //eyesAreClosed ? print("CLOSED") : print("OPENED")
     }
     
     func kppvSmile(new : [(CGFloat,CGFloat)], k : Int = 10){
         var distances : [(String, Double)] = []
         
         for smile in smiles {
-            distances.append(("smile", getDistance(mouth1: smile, mouth2: new)))
+            distances.append(("smile", getDistance(points1: smile, points2: new)))
         }
         for normal in normals {
-            distances.append(("normal", getDistance(mouth1: normal, mouth2: new)))
+            distances.append(("normal", getDistance(points1: normal, points2: new)))
         }
         
         distances.sort { (mouth1, mouth2) -> Bool in
@@ -193,10 +332,10 @@ class ViewController: UIViewController {
         return nbSmile >= values.count
     }
     
-    func getDistance(mouth1 : [(CGFloat,CGFloat)], mouth2 : [(CGFloat,CGFloat)]) -> Double{
+    func getDistance(points1 : [(CGFloat,CGFloat)], points2 : [(CGFloat,CGFloat)]) -> Double{
         var value : CGFloat = 0
-        for i in 0..<mouth1.count{
-            value += distance(mouth1[i], mouth2[i])
+        for i in 0..<points1.count{
+            value += distance(points1[i], points2[i])
         }
         
         return Double(value)
@@ -285,11 +424,7 @@ extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
         let ciImageWithOrientation = ciImage.oriented(forExifOrientation: Int32(UIImageOrientation.leftMirrored.rawValue))
         
         detectFace(on: ciImageWithOrientation)
-        
     }
-    
-    
-    
 }
 
 extension ViewController {
@@ -328,16 +463,17 @@ extension ViewController {
                         let faceBoundingBox = boundingBox.scaled(to: self.view.bounds.size)
                         //different types of landmarks
                         
-//                        if self.timer == nil && !self.canPush {
-//                            print("GO !!!")
-//                            self.timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { (timer) in
-//                                print("PUSHING !!!")
-//                                self.canPush = true
-//                            })
-//                        }
+                        if self.timer == nil && !self.canPush {
+                            print("GO !!!")
+                            self.timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { (timer) in
+                                print("PUSHING !!!")
+                                self.canPush = true
+                            })
+                        }
                         
                         let allpoints = observation.landmarks?.allPoints
                         self.convertPointsForFace(allpoints, faceBoundingBox)
+                        
                         if let points = allpoints?.normalizedPoints{
                             self.currentFace = points.map({ ($0.x, $0.y) })
                             //print(self.currentFace)
@@ -345,11 +481,19 @@ extension ViewController {
                             //let mouth = Array(self.currentFace[24...39])
                             //self.kppvSmile(new: mouth)
                             
-                            var eyes = Array(self.currentFace[8...23])
-                            eyes.append(contentsOf: self.currentFace[63...64])
-                            self.kppvEyes(new: eyes)
+//                            var eyes = Array(self.currentFace[8...23])
+//                            eyes.append(contentsOf: self.currentFace[63...64])
+                            //self.kppvEyes(new: eyes)
+                            
                             
                             //self.pushData(points)
+                            
+                            let eyeHeights = self.getEyeHeights(facePoints: self.currentFace)
+                            let pred = self.kppv?.predict([eyeHeights]) ?? []
+                            //print(self.kppv?.predict([eyeHeights]) ?? [])
+                            //self.pushEyesHeights(eyeHeights)
+                            self.checkEyeStatus(pred.first ?? 0)
+                            self.currentEyeLabel = pred.first ?? 0
                         }
                     }
                 }
@@ -357,9 +501,34 @@ extension ViewController {
         }
     }
     
+    func checkEyeStatus(_ status : Int){
+        if status != 1 && status == currentEyeLabel{
+            guard (eyeTimer?.isValid ?? false) == false else { return }
+            eyeTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true, block: { (timer) in
+                print("\(status) confirmed")
+                if status == 0 { AudioServicesPlaySystemSound (self.systemSoundID) } //WAKE UP
+            })
+        }else {
+            eyeTimer?.invalidate()
+        }
+    }
+    
+    func pushEyesHeights(_ points : [Double]){
+        guard canPush else { return }
+        if countPushes >= 50 {
+            print("FINISHED")
+            session?.stopRunning()
+            return
+        }
+        
+        self.db.collection("eyesHeights").addDocument(data: ["values": points,
+                                                             "key" : "rightClosed"])
+        countPushes += 1
+    }
+    
     func pushData(_ points : [CGPoint]){
         guard canPush else { return }
-        if countPushes >= 200 {
+        if countPushes >= 50 {
             print("FINISHED")
             session?.stopRunning()
             return
@@ -369,7 +538,7 @@ extension ViewController {
         var eyes = Array(points[8...23]).map({( "\($0.x) | \($0.y)" )})
         eyes.append(contentsOf: points[63...64].map({( "\($0.x) | \($0.y)" )}))
 
-        self.db.collection("openedEyes").addDocument(data: ["values": eyes])
+        self.db.collection("openedEyes2").addDocument(data: ["values": eyes])
         countPushes += 1
     }
     
