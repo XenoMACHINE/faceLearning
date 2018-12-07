@@ -14,6 +14,8 @@ import AVFoundation
 
 class ViewController: UIViewController {
     
+    @IBOutlet weak var validBtn: UIButton!
+    @IBOutlet weak var userInstructionLabel: UILabel!
     @IBOutlet weak var faceLabel: UILabel!
     @IBOutlet weak var globalView: UIView!
     @IBOutlet weak var loader: UIActivityIndicatorView!
@@ -40,6 +42,7 @@ class ViewController: UIViewController {
     let faceLandmarks = VNDetectFaceLandmarksRequest()
     let faceLandmarksDetectionRequest = VNSequenceRequestHandler()
     let faceDetectionRequest = VNSequenceRequestHandler()
+    let nbElementToPush = 25
     
     var timer : Timer?
     var canPush = false
@@ -59,8 +62,12 @@ class ViewController: UIViewController {
     var closedEyesData : [[(CGFloat,CGFloat)]] = []
     var openedEyesData : [[(CGFloat,CGFloat)]] = []
     
+    var userNormalEyesHeight : [Double] = []
+    
     var pushedEyes : [[Double]] = []
     var pushStatus = "closed"
+    
+    let currentClassifieurName = "eyesHeights++"
     
     let closedEyes : [(CGFloat,CGFloat)] = [(0.1915283203125, 0.8336181640625), (0.258056640625, 0.8658447265625), (0.3515625, 0.863037109375), (0.42578125, 0.83740234375), (0.6025390625, 0.8310546875), (0.677734375, 0.859619140625), (0.7626953125, 0.858642578125), (0.82177734375, 0.8262939453125), (0.2440185546875, 0.72412109375), (0.280029296875, 0.7255859375), (0.314697265625, 0.725830078125), (0.355712890625, 0.73046875), (0.397216796875, 0.728515625), (0.366455078125, 0.7109375), (0.318115234375, 0.70751953125), (0.2822265625, 0.71142578125), (0.62353515625, 0.72314453125), (0.6630859375, 0.723388671875), (0.69677734375, 0.718505859375), (0.73193359375, 0.7158203125), (0.76806640625, 0.710205078125), (0.73583984375, 0.701416015625), (0.6943359375, 0.69921875), (0.654296875, 0.70556640625), (0.436767578125, 0.3427734375), (0.490234375, 0.3505859375), (0.529296875, 0.34326171875), (0.57470703125, 0.35546875), (0.6162109375, 0.34033203125), (0.662109375, 0.31689453125), (0.60546875, 0.26123046875), (0.5302734375, 0.248046875), (0.4482421875, 0.263671875), (0.372802734375, 0.318359375), (0.457763671875, 0.314453125), (0.52783203125, 0.30908203125), (0.5888671875, 0.310546875), (0.5908203125, 0.3056640625), (0.52685546875, 0.30126953125), (0.447998046875, 0.31494140625), (0.10552978515625, 0.73193359375), (0.11309814453125, 0.58447265625), (0.1490478515625, 0.33447265625), (0.239013671875, 0.16845703125), (0.373046875, 0.04736328125), (0.525390625, 0.01416015625), (0.654296875, 0.046875), (0.76416015625, 0.16552734375), (0.83544921875, 0.32470703125), (0.8798828125, 0.562744140625), (0.88037109375, 0.72900390625), (0.47216796875, 0.736083984375), (0.45654296875, 0.566162109375), (0.411865234375, 0.47802734375), (0.477294921875, 0.47509765625), (0.5400390625, 0.439453125), (0.59619140625, 0.47021484375), (0.6416015625, 0.4775390625), (0.60693359375, 0.566162109375), (0.5673828125, 0.73876953125), (0.52587890625, 0.7547607421875), (0.53173828125, 0.655517578125), (0.54833984375, 0.522705078125), (0.3198089599609375, 0.720550537109375), (0.69598388671875, 0.712158203125)]
     
@@ -81,9 +88,10 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        UIApplication.shared.isIdleTimerDisabled = true
         sessionPrepare()
         //drawPoints(points: normalFaceExemple)
-        print(getEyeHeights(facePoints: normalFaceExemple))
+        //print(getEyeHeights(facePoints: normalFaceExemple))
         
         getEyesHeights()
 //        getSmilesMouths()
@@ -130,9 +138,24 @@ class ViewController: UIViewController {
         }
     }
     
+    func getStrLabel(_ label: Int) -> String{
+        switch label {
+        case 0:
+            return "closed"
+        case 1:
+            return "opened"
+        case 2:
+            return "leftClosed"
+        case 3:
+            return "rightClosed"
+        default:
+            return ""
+        }
+    }
+    
     func getEyesHeights(){
         loader.startAnimating()
-        db.collection("eyesHeights").getDocuments { (snap, err) in
+        db.collection(currentClassifieurName).getDocuments { (snap, err) in
             for doc in snap?.documents ?? []{
                 guard let values = doc.data()["values"] as? [Double],
                     let label = doc.data()["key"] as? String
@@ -143,7 +166,9 @@ class ViewController: UIViewController {
                 self.eyesHeightsIntLabels.append(intLabel)
             }
             
-            self.kppv = KNearestNeighborsClassifier(data: self.eyesHeightsValues, labels: self.eyesHeightsIntLabels)
+            if self.eyesHeightsValues.count > 0{
+                self.kppv = KNearestNeighborsClassifier(data: self.eyesHeightsValues, labels: self.eyesHeightsIntLabels)
+            }
             self.session?.startRunning()
             self.loader.stopAnimating()
             print("getEyesHeights ok")
@@ -200,6 +225,18 @@ class ViewController: UIViewController {
         
         for oposatePoint in oposatePoints {
             let dist = distance(facePoints[oposatePoint.0], facePoints[oposatePoint.1])
+            eyeHeights.append(pow(Double(dist * 1000), 3))
+        }
+        
+        return eyeHeights
+    }
+    
+    func getMaxEyeHeights(facePoints : [(CGFloat, CGFloat)]) -> [Double]{
+        var eyeHeights : [Double] = []
+        let oposatePoints = [(10, 14),(18, 22)]
+        
+        for oposatePoint in oposatePoints {
+            let dist = distance(facePoints[oposatePoint.0], facePoints[oposatePoint.1])
             eyeHeights.append(Double(dist) * 100)
         }
         
@@ -214,7 +251,7 @@ class ViewController: UIViewController {
         
         for i in 0..<eyesHeightsValues.count{
             let rand = Int.random(in: 0...100)
-            if rand < 50{
+            if rand < nbElementToPush{
                 xTrains.append(eyesHeightsValues[i])
                 yTrains.append(eyesHeightsIntLabels[i])
             }else{
@@ -227,10 +264,10 @@ class ViewController: UIViewController {
         print(accuracy(yTests: yTests, yPred: yPred))
     }
     
-    func getYPred( size : Int = 50) -> [Int]{
-        let status = pushStatus == "opened" ? 1 : 0
+    func getYPred() -> [Int]{
+        let status = getIntLabel(pushStatus)
         var yPred : [Int] = []
-        for _ in 0..<size{
+        for _ in 0..<nbElementToPush{
             yPred.append(status)
         }
         return yPred
@@ -405,20 +442,37 @@ class ViewController: UIViewController {
     }
     
     func pushIn3Sec(){
-        globalView.isHidden = false
-        showEyesPoint = true
-        Timer.scheduledTimer(withTimeInterval: 3, repeats: false) { (timer) in
+        userInstructionLabel.text = "Move to position : " + pushStatus + " eyes"
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: false) { (timer) in
+            self.userInstructionLabel.text = ""
             self.canPush = true
         }
     }
     
-    @IBAction func onSmile(_ sender: Any) {
-        pushStatus = "opened"
+    @IBAction func onValid(_ sender: Any) {
+        userNormalEyesHeight = getMaxEyeHeights(facePoints: currentFace)
+        validBtn.isHidden = true
         pushIn3Sec()
     }
     
-    @IBAction func onNormal(_ sender: Any) {
-        pushStatus = "closed"
+    @IBAction func onButton(_ sender: UIButton) {
+        switch sender.tag {
+        case 0:
+            pushStatus = "closed"
+        case 1:
+            pushStatus = "opened"
+        case 2:
+            pushStatus = "leftClosed"
+        case 3:
+            pushStatus = "rightClosed"
+        default:
+            return
+        }
+        
+        //validBtn.isHidden = false
+        //userInstructionLabel.text = "Stay in normal position (opened eyes)"
+        globalView.isHidden = false
+        showEyesPoint = true
         pushIn3Sec()
     }
     
@@ -485,19 +539,26 @@ extension ViewController {
                         if let points = allpoints?.normalizedPoints{
                             self.currentFace = points.map({ ($0.x, $0.y) })
                             
+                            self.userNormalEyesHeight = []
+                            
                             let eyeHeights = self.getEyeHeights(facePoints: self.currentFace)
+                            
                             let pred = self.kppv?.predict([eyeHeights]) ?? []
                             //print(self.kppv?.predict([eyeHeights]) ?? [])
                             
                             self.pushEyesHeights(eyeHeights)
                             self.checkEyeStatus(pred.first ?? 0)
                             self.currentEyeLabel = pred.first ?? 0
-                            self.setFaceLabel(status: self.currentEyeLabel)
+                            //self.setFaceLabel(status: self.currentEyeLabel)
                         }
                     }
                 }
             }
         }
+    }
+    
+    func hasUpperSize(new : [Double]) -> Bool {
+        return (new.first ?? 0) > (userNormalEyesHeight.first ?? 0) && (new.last ?? 0) > (userNormalEyesHeight.last ?? 0)
     }
     
     func setFaceLabel(status : Int){
@@ -519,30 +580,40 @@ extension ViewController {
     func checkEyeStatus(_ status : Int){
         if status != 1 && status == currentEyeLabel{
             guard (eyeTimer?.isValid ?? false) == false else { return }
-            eyeTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true, block: { (timer) in
+            eyeTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true, block: { (timer) in
                 print("\(status) confirmed")
-                if status == 0 && self.canPush == false {
+                self.userNormalEyesHeight.removeAll()
+                self.setFaceLabel(status: self.currentEyeLabel)
+                if status == 0 && self.showEyesPoint == false {
                     AudioServicesPlaySystemSound (self.systemSoundID)
                     AudioServicesPlayAlertSound(SystemSoundID(kSystemSoundID_Vibrate))
                 } //WAKE UP
             })
         }else {
+            self.setFaceLabel(status: self.currentEyeLabel)
             eyeTimer?.invalidate()
         }
     }
     
     func pushEyesHeights(_ points : [Double]){
         guard canPush else { return }
-        if countPushes >= 50 {
+        if countPushes >= nbElementToPush {
             let pred = kppv?.predict(pushedEyes) ?? []
             let acc = accuracy(yTests: pred, yPred: getYPred()) * 100
+            let date = Timestamp(date: Date())
             let action = UIAlertAction(title: "Send", style: .default) { (action) in
                 for eye in self.pushedEyes{
-                    self.db.collection("eyesHeights").addDocument(data: ["values": eye, "key" : self.pushStatus])
+//                    var values = eye
+//                    values.append(contentsOf: self.userNormalEyesHeight)
+                    self.db.collection(self.currentClassifieurName).addDocument(data: ["values": eye,
+                                                                         "key" : self.pushStatus,
+                                                                         "label" : self.getIntLabel(self.pushStatus),
+                                                                         "date" : date])
                 }
                 self.eyesHeightsValues.append(contentsOf: self.pushedEyes)
                 let intLabels = self.getYPred()
                 self.eyesHeightsIntLabels.append(contentsOf: intLabels)
+                self.kppv = KNearestNeighborsClassifier(data: self.eyesHeightsValues, labels: self.eyesHeightsIntLabels)
                 self.pushedEyes.removeAll()
             }
             let cancel = UIAlertAction(title: "Cancel", style: .cancel) { (action) in
@@ -557,13 +628,12 @@ extension ViewController {
         }
         
         self.pushedEyes.append(points)
-        //self.db.collection("eyesHeights").addDocument(data: ["values": points, "key" : "rightClosed"])
         countPushes += 1
     }
     
     func pushData(_ points : [CGPoint]){
         guard canPush else { return }
-        if countPushes >= 50 {
+        if countPushes >= nbElementToPush {
             print("FINISHED")
             session?.stopRunning()
             return

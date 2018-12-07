@@ -69,6 +69,6 @@ public class KNearestNeighborsClassifier {
             }
         }
         
-        fatalError("Cannot find the majority.")
+        fatalError("Can't find the majority.")
     }
 }
