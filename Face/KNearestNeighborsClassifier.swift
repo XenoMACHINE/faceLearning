@@ -36,6 +36,36 @@ public class KNearestNeighborsClassifier {
         })
     }
     
+    public func test(_ precentage : Int) -> Double{
+        var xTrains : [[Double]] = []
+        var yTrains : [Int] = []
+        var xTests : [[Double]] = []
+        var yTests : [Int] = []
+        
+        for i in 0..<data.count{
+            let rand = Int.random(in: 0...100)
+            if rand < precentage{
+                xTrains.append(data[i])
+                yTrains.append(labels[i])
+            }else{
+                xTests.append(data[i])
+                yTests.append(labels[i])
+            }
+        }
+        
+        let yPred = self.predict(xTests)
+        return accuracy(yTests: yTests, yPred: yPred) * 100
+    }
+    
+    public func accuracy(yTests : [Int], yPred : [Int]) -> Double{
+        var count : Double = 0
+        for i in 0..<yTests.count{
+            if yTests[i] == yPred[i] { count += 1 }
+        }
+        
+        return count / Double(yPred.count)
+    }
+    
     private func distance(_ xTrain: [Double], _ xTest: [Double]) -> Double {
         let distances = xTrain.enumerated().map { index, _ in
             return pow(xTrain[index] - xTest[index], 2)

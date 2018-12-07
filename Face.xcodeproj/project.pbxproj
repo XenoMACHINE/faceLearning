@@ -21,7 +21,6 @@
 		41713B1B2012FCC300513808 /* Line.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41713B152012FCC300513808 /* Line.swift */; };
 		41713B1C2012FCC300513808 /* DelaunaySwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41713B162012FCC300513808 /* DelaunaySwift.swift */; };
 		AD422F2421B6EEAC00C9F9B4 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AD422F2321B6EEAC00C9F9B4 /* GoogleService-Info.plist */; };
-		AD4CDC3421B7F4520082FA7D /* Kppv.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4CDC3321B7F4520082FA7D /* Kppv.swift */; };
 		AD97659821B70483005C6AB5 /* KNearestNeighborsClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD97659721B70483005C6AB5 /* KNearestNeighborsClassifier.swift */; };
 		FAF194EEA1B884593E998AA6 /* Pods_Face.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D46B629010C0B4CFE346BB71 /* Pods_Face.framework */; };
 /* End PBXBuildFile section */
@@ -65,7 +64,6 @@
 		41713B162012FCC300513808 /* DelaunaySwift.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DelaunaySwift.swift; sourceTree = "<group>"; };
 		96083789ACB2C67AD289C32A /* Pods-Face.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Face.release.xcconfig"; path = "Pods/Target Support Files/Pods-Face/Pods-Face.release.xcconfig"; sourceTree = "<group>"; };
 		AD422F2321B6EEAC00C9F9B4 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		AD4CDC3321B7F4520082FA7D /* Kppv.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kppv.swift; sourceTree = "<group>"; };
 		AD97659721B70483005C6AB5 /* KNearestNeighborsClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KNearestNeighborsClassifier.swift; sourceTree = "<group>"; };
 		D46B629010C0B4CFE346BB71 /* Pods_Face.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Face.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB334500CF817DEDC3807854 /* Pods-Face.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Face.debug.xcconfig"; path = "Pods/Target Support Files/Pods-Face/Pods-Face.debug.xcconfig"; sourceTree = "<group>"; };
@@ -136,7 +134,6 @@
 				41713AEF2012FC6A00513808 /* Info.plist */,
 				AD422F2321B6EEAC00C9F9B4 /* GoogleService-Info.plist */,
 				AD97659721B70483005C6AB5 /* KNearestNeighborsClassifier.swift */,
-				AD4CDC3321B7F4520082FA7D /* Kppv.swift */,
 			);
 			path = Face;
 			sourceTree = "<group>";
@@ -374,7 +371,6 @@
 				41713B192012FCC300513808 /* Circumcircle.swift in Sources */,
 				41713AE32012FC6A00513808 /* ViewController.swift in Sources */,
 				41713AE12012FC6A00513808 /* AppDelegate.swift in Sources */,
-				AD4CDC3421B7F4520082FA7D /* Kppv.swift in Sources */,
 				41713B1C2012FCC300513808 /* DelaunaySwift.swift in Sources */,
 				41713B182012FCC300513808 /* Triangle.swift in Sources */,
 				41713B1B2012FCC300513808 /* Line.swift in Sources */,
