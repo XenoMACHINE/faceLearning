@@ -14,6 +14,12 @@ import AVFoundation
 
 class ViewController: UIViewController {
     
+    //Constraits
+    @IBOutlet weak var bottomBtn1: NSLayoutConstraint!
+    @IBOutlet weak var bottomBtn2: NSLayoutConstraint!
+    
+    
+    //Outlets
     @IBOutlet weak var validBtn: UIButton!
     @IBOutlet weak var userInstructionLabel: UILabel!
     @IBOutlet weak var faceLabel: UILabel!
@@ -75,6 +81,7 @@ class ViewController: UIViewController {
     var kppv : KNearestNeighborsClassifier?
     
     var showEyesPoint = false
+    var noFaceMessage = "Hello ?"
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -83,6 +90,7 @@ class ViewController: UIViewController {
         //drawPoints(points: normalFaceExemple)
         //print(getEyeHeights(facePoints: normalFaceExemple))
         
+        addSwipeGesture()
         getEyesHeights()
 //        getSmilesMouths()
 //        getOpenedEyes()
@@ -111,6 +119,33 @@ class ViewController: UIViewController {
     
     override func viewDidDisappear(_ animated: Bool) {
         session?.stopRunning()
+    }
+    
+    func addSwipeGesture(){
+        let swipeUp = UISwipeGestureRecognizer(target: self, action: #selector(handleGesture))
+        swipeUp.direction = .up
+        self.view.addGestureRecognizer(swipeUp)
+        
+        let swipeDown = UISwipeGestureRecognizer(target: self, action: #selector(handleGesture))
+        swipeDown.direction = .down
+        self.view.addGestureRecognizer(swipeDown)
+    }
+    
+    @objc func handleGesture(gesture: UISwipeGestureRecognizer) {
+        if gesture.direction == UISwipeGestureRecognizerDirection.up {
+            self.showAddClassifieurBtn(true)
+        }
+        else if gesture.direction == UISwipeGestureRecognizerDirection.down {
+            self.showAddClassifieurBtn(false)
+        }
+    }
+    
+    func showAddClassifieurBtn(_ show : Bool){
+        UIView.animate(withDuration: 0.2) {
+            self.bottomBtn1.constant = show ? 0 : 100
+            self.bottomBtn2.constant = show ? 0 : 100
+            self.view.layoutIfNeeded()
+        }
     }
     
     func getIntLabel(_ label: String) -> Int{
@@ -235,6 +270,20 @@ class ViewController: UIViewController {
         }
     }
     
+    func getRandomNoFaceMessage() -> String {
+        let rand = Int.random(in: 0...3)
+        switch rand {
+        case 0 :
+            return "Are you there ?"
+        case 1 :
+            return "Alive ?"
+        case 2 :
+            return "Hello ?"
+        default:
+            return "Use the app !"
+        }
+    }
+    
     @IBAction func onValid(_ sender: Any) {
         validBtn.isHidden = true
         pushIn3Sec()
@@ -258,7 +307,6 @@ class ViewController: UIViewController {
         showEyesPoint = true
         pushIn3Sec()
     }
-    
 }
 
 extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
@@ -288,11 +336,12 @@ extension ViewController {
                     self.shapeLayer.sublayers?.removeAll()
                     self.checkEyeStatus(1)
                     self.currentEyeLabel = 1
-                    self.faceLabel.text = ""
+                    self.faceLabel.text = self.noFaceMessage
                 }
             }
             if !results.isEmpty {
                 
+                self.noFaceMessage = getRandomNoFaceMessage()
                 faceLandmarks.inputFaceObservations = results
                 detectLandmarks(on: image)
                 
@@ -354,7 +403,6 @@ extension ViewController {
             faceLabel.text = "O.-"
         case 3 :
             faceLabel.text = "-.O"
-            
         default:
             break
         }
