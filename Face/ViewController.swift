@@ -153,9 +153,9 @@ class ViewController: UIViewController {
     }
     
     func showAddClassifieurBtn(_ show : Bool){
-        UIView.animate(withDuration: 0.2) {
-            self.bottomBtn1.constant = show ? 0 : 100
-            self.bottomBtn2.constant = show ? 0 : 100
+        UIView.animate(withDuration: 0.3) {
+            self.bottomBtn1.constant = show ? 0 : 150
+            self.bottomBtn2.constant = show ? 0 : 150
             self.view.layoutIfNeeded()
         }
     }
