@@ -11,6 +11,7 @@ import AVFoundation
 import Vision
 import FirebaseFirestore
 import AVFoundation
+import FirebaseAuth
 
 class ViewController: UIViewController {
     
@@ -94,6 +95,7 @@ class ViewController: UIViewController {
         getEyesHeights()
 //        getSmilesMouths()
 //        getOpenedEyes()
+        
     }
     
     override func viewDidLayoutSubviews() {
@@ -115,10 +117,20 @@ class ViewController: UIViewController {
         shapeLayer.setAffineTransform(CGAffineTransform(scaleX: -1, y: -1))
         
         globalView.layer.addSublayer(shapeLayer)
+        
+        checkConnection()
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         session?.stopRunning()
+    }
+    
+    func checkConnection(){
+        if Auth.auth().currentUser == nil {
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            let connectionVC = storyboard.instantiateViewController(withIdentifier: "ConnectionViewController") as! ConnectionViewController
+            self.present(connectionVC, animated: true)
+        }
     }
     
     func addSwipeGesture(){
@@ -412,10 +424,9 @@ extension ViewController {
         if status != 1 && status == currentEyeLabel{
             guard (eyeTimer?.isValid ?? false) == false else { return }
             eyeTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true, block: { (timer) in
-                print("\(status) confirmed")
                 self.userNormalEyesHeight.removeAll()
-                self.setFaceLabel(status: self.currentEyeLabel)
                 if status == 0 && self.showEyesPoint == false {
+                    self.setFaceLabel(status: self.currentEyeLabel)
                     AudioServicesPlaySystemSound (self.systemSoundID)
                     AudioServicesPlayAlertSound(SystemSoundID(kSystemSoundID_Vibrate))
                 } //WAKE UP
@@ -427,17 +438,22 @@ extension ViewController {
     }
     
     func pushEyesHeights(_ points : [Double]){
-        guard canPush else { return }
+        guard canPush, let userId = UserManager.shared.userId else { return }
         if countPushes >= nbElementToPush {
             let pred = kppv?.predict(pushedEyes) ?? []
             let acc = kppv?.accuracy(yTests: pred, yPred: getYPred()) ?? 0
             let date = Timestamp(date: Date())
             let action = UIAlertAction(title: "Send", style: .default) { (action) in
-                for eye in self.pushedEyes{
-                    self.db.collection(self.currentClassifieurName).addDocument(data: ["values": eye,
-                                                                         "key" : self.pushStatus,
-                                                                         "label" : self.getIntLabel(self.pushStatus),
-                                                                         "date" : date])
+                for eye in self.pushedEyes {
+                    self.db.collection("users").document(userId).collection("personalValues")
+                        .addDocument(data: ["values": eye,
+                                             "key" : self.pushStatus,
+                                             "label" : self.getIntLabel(self.pushStatus),
+                                             "date" : date])
+//                    self.db.collection(self.currentClassifieurName).addDocument(data: ["values": eye,
+//                                                                         "key" : self.pushStatus,
+//                                                                         "label" : self.getIntLabel(self.pushStatus),
+//                                                                         "date" : date])
                 }
                 self.eyesHeightsValues.append(contentsOf: self.pushedEyes)
                 let intLabels = self.getYPred()

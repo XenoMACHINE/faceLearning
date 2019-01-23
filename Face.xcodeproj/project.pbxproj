@@ -22,6 +22,9 @@
 		41713B1C2012FCC300513808 /* DelaunaySwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41713B162012FCC300513808 /* DelaunaySwift.swift */; };
 		AD422F2421B6EEAC00C9F9B4 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AD422F2321B6EEAC00C9F9B4 /* GoogleService-Info.plist */; };
 		AD97659821B70483005C6AB5 /* KNearestNeighborsClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD97659721B70483005C6AB5 /* KNearestNeighborsClassifier.swift */; };
+		AD97E05521F7C2550009E532 /* ConnectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD97E05421F7C2550009E532 /* ConnectionViewController.swift */; };
+		ADBEDFA621F7C47300F6DECD /* UserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADBEDFA521F7C47300F6DECD /* UserManager.swift */; };
+		ADBEDFA821F7C4BD00F6DECD /* GlobalButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADBEDFA721F7C4BD00F6DECD /* GlobalButton.swift */; };
 		FAF194EEA1B884593E998AA6 /* Pods_Face.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D46B629010C0B4CFE346BB71 /* Pods_Face.framework */; };
 /* End PBXBuildFile section */
 
@@ -65,6 +68,9 @@
 		96083789ACB2C67AD289C32A /* Pods-Face.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Face.release.xcconfig"; path = "Pods/Target Support Files/Pods-Face/Pods-Face.release.xcconfig"; sourceTree = "<group>"; };
 		AD422F2321B6EEAC00C9F9B4 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AD97659721B70483005C6AB5 /* KNearestNeighborsClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KNearestNeighborsClassifier.swift; sourceTree = "<group>"; };
+		AD97E05421F7C2550009E532 /* ConnectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionViewController.swift; sourceTree = "<group>"; };
+		ADBEDFA521F7C47300F6DECD /* UserManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserManager.swift; sourceTree = "<group>"; };
+		ADBEDFA721F7C4BD00F6DECD /* GlobalButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalButton.swift; sourceTree = "<group>"; };
 		D46B629010C0B4CFE346BB71 /* Pods_Face.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Face.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB334500CF817DEDC3807854 /* Pods-Face.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Face.debug.xcconfig"; path = "Pods/Target Support Files/Pods-Face/Pods-Face.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -130,10 +136,13 @@
 				41713B122012FCC200513808 /* Triangle.swift */,
 				41713B142012FCC200513808 /* Vertex.swift */,
 				41713AEA2012FC6A00513808 /* Assets.xcassets */,
+				AD97E05421F7C2550009E532 /* ConnectionViewController.swift */,
 				41713AEC2012FC6A00513808 /* LaunchScreen.storyboard */,
 				41713AEF2012FC6A00513808 /* Info.plist */,
 				AD422F2321B6EEAC00C9F9B4 /* GoogleService-Info.plist */,
 				AD97659721B70483005C6AB5 /* KNearestNeighborsClassifier.swift */,
+				ADBEDFA521F7C47300F6DECD /* UserManager.swift */,
+				ADBEDFA721F7C4BD00F6DECD /* GlobalButton.swift */,
 			);
 			path = Face;
 			sourceTree = "<group>";
@@ -314,7 +323,9 @@
 			inputPaths = (
 				"${SRCROOT}/Pods/Target Support Files/Pods-Face/Pods-Face-frameworks.sh",
 				"${BUILT_PRODUCTS_DIR}/BoringSSL/openssl.framework",
+				"${BUILT_PRODUCTS_DIR}/GTMSessionFetcher/GTMSessionFetcher.framework",
 				"${BUILT_PRODUCTS_DIR}/GoogleUtilities/GoogleUtilities.framework",
+				"${BUILT_PRODUCTS_DIR}/NVActivityIndicatorView/NVActivityIndicatorView.framework",
 				"${BUILT_PRODUCTS_DIR}/Protobuf/Protobuf.framework",
 				"${BUILT_PRODUCTS_DIR}/gRPC/GRPCClient.framework",
 				"${BUILT_PRODUCTS_DIR}/gRPC-C++/grpcpp.framework",
@@ -327,7 +338,9 @@
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/openssl.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GTMSessionFetcher.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GoogleUtilities.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/NVActivityIndicatorView.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Protobuf.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GRPCClient.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/grpcpp.framework",
@@ -369,12 +382,15 @@
 			files = (
 				AD97659821B70483005C6AB5 /* KNearestNeighborsClassifier.swift in Sources */,
 				41713B192012FCC300513808 /* Circumcircle.swift in Sources */,
+				ADBEDFA821F7C4BD00F6DECD /* GlobalButton.swift in Sources */,
+				AD97E05521F7C2550009E532 /* ConnectionViewController.swift in Sources */,
 				41713AE32012FC6A00513808 /* ViewController.swift in Sources */,
 				41713AE12012FC6A00513808 /* AppDelegate.swift in Sources */,
 				41713B1C2012FCC300513808 /* DelaunaySwift.swift in Sources */,
 				41713B182012FCC300513808 /* Triangle.swift in Sources */,
 				41713B1B2012FCC300513808 /* Line.swift in Sources */,
 				41713B1A2012FCC300513808 /* Vertex.swift in Sources */,
+				ADBEDFA621F7C47300F6DECD /* UserManager.swift in Sources */,
 				41713B172012FCC300513808 /* extensions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

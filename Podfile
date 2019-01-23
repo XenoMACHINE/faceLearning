@@ -8,5 +8,7 @@ target 'Face' do
   # Pods for Face
   pod 'Firebase/Core'
   pod 'FirebaseFirestore'
+  pod 'Firebase/Auth'
+  pod 'NVActivityIndicatorView'
 
 end
