@@ -26,6 +26,15 @@ class UserManager: NSObject {
         }
     }
     
+    var personalData : Bool {
+        get{
+            return UserDefaults.standard.bool(forKey: "personalData")
+        }
+        set{
+            UserDefaults.standard.set(newValue, forKey: "personalData")
+        }
+    }
+    
     func initUser(){
         self.userId = Auth.auth().currentUser?.uid
     }

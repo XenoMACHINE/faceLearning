@@ -24,8 +24,10 @@ class ViewController: UIViewController {
     @IBOutlet weak var validBtn: UIButton!
     @IBOutlet weak var userInstructionLabel: UILabel!
     @IBOutlet weak var faceLabel: UILabel!
+    @IBOutlet weak var faceImage: UIImageView!
     @IBOutlet weak var globalView: UIView!
     @IBOutlet weak var loader: UIActivityIndicatorView!
+    @IBOutlet weak var switchButton: UISwitch!
     
     lazy var db = Firestore.firestore()
     let systemSoundID: SystemSoundID = 1016
@@ -92,10 +94,10 @@ class ViewController: UIViewController {
         //print(getEyeHeights(facePoints: normalFaceExemple))
         
         addSwipeGesture()
-        getEyesHeights()
 //        getSmilesMouths()
 //        getOpenedEyes()
         
+        switchButton.isOn = UserManager.shared.personalData
     }
     
     override func viewDidLayoutSubviews() {
@@ -119,6 +121,8 @@ class ViewController: UIViewController {
         globalView.layer.addSublayer(shapeLayer)
         
         checkConnection()
+        UserManager.shared.initUser()
+        getPersonalData()
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -190,26 +194,50 @@ class ViewController: UIViewController {
         }
     }
     
-    func getEyesHeights(){
+    func getGlobalData(){
+        session?.stopRunning()
+        faceLabel.text = ""
+        faceImage.image = nil
         loader.startAnimating()
         db.collection(currentClassifieurName).getDocuments { (snap, err) in
-            for doc in snap?.documents ?? []{
-                guard let values = doc.data()["values"] as? [Double],
-                    let label = doc.data()["key"] as? String
-                    ,label == "opened" || label == "closed"
-                    else { continue }
-                self.eyesHeightsValues.append(values)
-                let intLabel = self.getIntLabel(label)
-                self.eyesHeightsIntLabels.append(intLabel)
-            }
-            
-            if self.eyesHeightsValues.count > 0{
-                self.kppv = KNearestNeighborsClassifier(data: self.eyesHeightsValues, labels: self.eyesHeightsIntLabels)
-            }
-            self.session?.startRunning()
-            self.loader.stopAnimating()
-            print("getEyesHeights ok")
+            guard let snapshot = snap else { return }
+            self.addValuesFrom(snap: snapshot)
         }
+    }
+    
+    func getPersonalData(){
+        guard let userId = UserManager.shared.userId else { return }
+        session?.stopRunning()
+        faceLabel.text = ""
+        faceImage.image = nil
+        loader.startAnimating()
+        db.collection("users").document(userId).collection("personalValues").getDocuments { (snap, err) in
+            if UserManager.shared.personalData, let snapshot = snap {
+                self.addValuesFrom(snap: snapshot)
+            }else{
+                self.getGlobalData()
+            }
+        }
+    }
+    
+    func addValuesFrom(snap : QuerySnapshot){
+        self.eyesHeightsValues.removeAll()
+        self.eyesHeightsIntLabels.removeAll()
+        for doc in snap.documents {
+            guard let values = doc.data()["values"] as? [Double],
+                let label = doc.data()["key"] as? String
+                ,label == "opened" || label == "closed"
+                else { continue }
+            self.eyesHeightsValues.append(values)
+            let intLabel = self.getIntLabel(label)
+            self.eyesHeightsIntLabels.append(intLabel)
+        }
+        
+        if self.eyesHeightsValues.count > 0{
+            self.kppv = KNearestNeighborsClassifier(data: self.eyesHeightsValues, labels: self.eyesHeightsIntLabels)
+        }
+        self.session?.startRunning()
+        self.loader.stopAnimating()
     }
     
     func getEyeHeights(facePoints : [(CGFloat, CGFloat)]) -> [Double]{
@@ -296,6 +324,20 @@ class ViewController: UIViewController {
         }
     }
     
+    @IBAction func onDisconnect(_ sender: Any) {
+        try? Auth.auth().signOut()
+        checkConnection()
+    }
+    
+    @IBAction func onSwitch(_ sender: UISwitch) {
+        UserManager.shared.personalData = sender.isOn
+        if sender.isOn {
+            getPersonalData()
+        }else{
+            getGlobalData()
+        }
+    }
+    
     @IBAction func onValid(_ sender: Any) {
         validBtn.isHidden = true
         pushIn3Sec()
@@ -349,18 +391,24 @@ extension ViewController {
                     self.checkEyeStatus(1)
                     self.currentEyeLabel = 1
                     self.faceLabel.text = self.noFaceMessage
+                    self.faceLabel.isHidden = false
+                    self.faceImage.image = nil
+
+                    if self.loader.isAnimating {
+                        self.faceLabel.text = ""
+                        self.faceImage.image = nil
+                    }
                 }
             }
             if !results.isEmpty {
                 
                 self.noFaceMessage = getRandomNoFaceMessage()
+                
                 faceLandmarks.inputFaceObservations = results
                 detectLandmarks(on: image)
                 
                 DispatchQueue.main.async {
-                    
                     self.shapeLayer.sublayers?.removeAll()
-                    
                 }
             }
         }
@@ -406,10 +454,14 @@ extension ViewController {
     }
     
     func setFaceLabel(status : Int){
+        faceLabel.isHidden = true
+
         switch status {
         case 0 :
+            faceImage.image = UIImage(named: "closedEyes")
             faceLabel.text = "-.-"
         case 1 :
+            faceImage.image = UIImage(named: "openedEyes")
             faceLabel.text = "O.O"
         case 2 :
             faceLabel.text = "O.-"
@@ -417,6 +469,10 @@ extension ViewController {
             faceLabel.text = "-.O"
         default:
             break
+        }
+        if loader.isAnimating {
+            faceLabel.text = ""
+            faceImage.image = nil
         }
     }
     
@@ -441,25 +497,24 @@ extension ViewController {
         guard canPush, let userId = UserManager.shared.userId else { return }
         if countPushes >= nbElementToPush {
             let pred = kppv?.predict(pushedEyes) ?? []
-            let acc = kppv?.accuracy(yTests: pred, yPred: getYPred()) ?? 0
+            let acc = (kppv?.accuracy(yTests: pred, yPred: getYPred()) ?? 0) * 100
             let date = Timestamp(date: Date())
             let action = UIAlertAction(title: "Send", style: .default) { (action) in
+                self.switchButton.isOn = true
+                UserManager.shared.personalData = true
                 for eye in self.pushedEyes {
                     self.db.collection("users").document(userId).collection("personalValues")
                         .addDocument(data: ["values": eye,
                                              "key" : self.pushStatus,
                                              "label" : self.getIntLabel(self.pushStatus),
                                              "date" : date])
-//                    self.db.collection(self.currentClassifieurName).addDocument(data: ["values": eye,
-//                                                                         "key" : self.pushStatus,
-//                                                                         "label" : self.getIntLabel(self.pushStatus),
-//                                                                         "date" : date])
                 }
                 self.eyesHeightsValues.append(contentsOf: self.pushedEyes)
                 let intLabels = self.getYPred()
                 self.eyesHeightsIntLabels.append(contentsOf: intLabels)
                 self.kppv = KNearestNeighborsClassifier(data: self.eyesHeightsValues, labels: self.eyesHeightsIntLabels)
                 self.pushedEyes.removeAll()
+                self.getPersonalData()
             }
             let cancel = UIAlertAction(title: "Cancel", style: .cancel) { (action) in
                 self.pushedEyes.removeAll()
